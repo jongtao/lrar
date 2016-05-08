@@ -156,13 +156,37 @@ namespace triangulation_test
 
             if (!converges)
             {
+                Console.WriteLine("Second Try;");
+                // Second Try
+                converges = CircleIntersect(
+                    x1, y1, r1,
+                    x3, y3, r3,
+                    x2, y2, r2,
+                    ref sol_x, ref sol_y, tolerance);
+
+                if (!converges)
+                {
+                    Console.WriteLine("Third Try;");
+                    // Third Try
+                    converges = CircleIntersect(
+                        x2, y2, r2,
+                        x3, y3, r3,
+                        x1, y1, r1,
+                        ref sol_x, ref sol_y, tolerance);
+
+                } // third try
+            } // second try
+
+            if (!converges)
+            {
+                // Give up with approximation
                 CircleApprox(
                     x1, y1, r1,
                     x2, y2, r2,
                     x3, y3, r3,
                     ref sol_x, ref sol_y);
                 Console.WriteLine("Failed To converge: (" + sol_x + "," + sol_y + ")");
-            }
+            } // give up
             else
                 Console.WriteLine("Converge: (" + sol_x + "," + sol_y + ")");
         } // get_circle_sol()
@@ -173,17 +197,16 @@ namespace triangulation_test
         {
             double x1 = 0.0;
             double y1 = 1.0;
-            double r1 = 1.0;
+            double r1 = 0.9; //1
 
             double x2 = 0.0;
             double y2 = -1.0;
-            double r2 = 1.0;
+            double r2 = 1; //1
 
             double x3 = 2.0;
             double y3 = 0.0;
-            double r3 = 1.0;
+            double r3 = 2; //2
 
-            bool converges = false;
             double tolerance = 0.1;
             double sol_x = 0.0;
             double sol_y = 0.0;

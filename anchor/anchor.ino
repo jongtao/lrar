@@ -9,19 +9,22 @@ int rstpin = 9;
 long temp;
 
 DW1000 dw = DW1000(ss, rstpin);
-volatile bool SPIevent = false;
-bool is_sent = false;
-bool is_receive = false;
+//volatile bool SPIevent = false;
+//bool is_sent = false;
+//bool is_receive = false;
 uint8_t iter=0;
 unsigned long now_time = 0;
-unsigned long last_time = 0;
+//unsigned long last_time = 0;
 uint64_t range1_time =0;
 uint64_t reply1_time =0;
 uint64_t delta_time = 0;
 byte tx_buffer[]={0x1,MY_ID, iter};
 
+uint8_t timeout = 0;
 
-uint32_t range_buffer[]={0,0,0,0,0};
+
+uint32_t range_buffer[]={0,0,0,0,0}; // range to report
+
 void push_buffer(uint32_t inbuffer[], uint32_t value){
   uint8_t i=0;
   for(i=0;i<5-1;i++){
@@ -29,6 +32,7 @@ void push_buffer(uint32_t inbuffer[], uint32_t value){
   }
   inbuffer[4] = value;
 }
+
 uint32_t avg_buffer(uint32_t inbuffer[]){
   uint64_t total=0;
   uint8_t i=0;
@@ -45,14 +49,18 @@ typedef enum MY_STATUS{
   POST_RANGE
 }MY_STATUS_t;
 
+
 MY_STATUS_t my_status=INIT;
 
-
+/*
 void isr_handler(){
  // Serial.println("isr");
   SPIevent = true;
 }
+(
+*/
 
+/*
 void event_handler(){
   uint16_t event_code = dw.readReg(0x0F, 0, 0, 2);
   Serial.println(event_code, BIN);
@@ -63,6 +71,7 @@ void event_handler(){
     is_receive=true;
   }
 }
+*/
 
 
 
@@ -90,6 +99,7 @@ void newreceive(){
   dw.writeReg(0x0d,0,0, (uint32_t)(0x1<<6), 4);
 }
 
+/*
 void sentFixMsg(){
   byte tx_buffer[]={0x1,0x2,iter};
   dw.writeTxBuffer(tx_buffer, 3);
@@ -97,7 +107,9 @@ void sentFixMsg(){
   delay(10);
   iter++;
 }
+*/
 
+/*
 void sentBlink(){
   byte tx_buffer[]={0x1,iter};
   dw.writeTxBuffer(tx_buffer, 2);
@@ -105,6 +117,7 @@ void sentBlink(){
   delay(10);
   iter++;
 }
+*/
 
 void sentRange1(){
 
@@ -114,7 +127,7 @@ void sentRange1(){
   // setup delay
 }
 
-
+/*
 
 void softReset(){
   //reset in 5 seconds inactivity
@@ -125,15 +138,19 @@ void softReset(){
     clearSent();
     clearReceive();
 }
+*/
 
+/*
 void newDelaysent(){
   dw.writeReg(0x0d,0,0, (uint16_t)(0x40), 2);
   dw.writeReg(0x0d,0,0, (uint16_t)(0x02), 2);
 }
+*/
 
 
 void setup() {
   Serial.begin(115200);
+
   dw.initialise();
   dw.setPanID(0xFFFF);
   dw.setShortID(0x0);
@@ -142,11 +159,8 @@ void setup() {
 
   // set interrupt for rx and tx
   //uint64_t eventMask = dw.readReg(0x0E, 0, 0, 4);
+	//
   uint16_t eventMask = 0;
- // eventMask |= (0x1<<7);
- // eventMask |= (0x1<<13);    //Mast transmit frame sent event
- // dw.writeReg(0x0E, 0, 0, eventMask, 2);
-  //setup delay
 
   Serial.println("Initialisation complete!");
   
@@ -186,84 +200,83 @@ uint64_t getTimestamp(uint8_t addr){
   return (uint64_t)(((uint64_t)dw.readReg(addr,1,4,1)<<32) | (uint64_t)(dw.readReg(addr,0,0,4)));
 }
 
-void loop() {
-  // the loop should be non-blocking
-  if(SPIevent){
-   // Serial.println((unsigned long)dw.readReg(0x0F, 0, 0, 4), BIN);
-    uint16_t sys_status = dw.readReg(0x0F,0,0,2);
-    is_receive = bitRead(sys_status, 13);
-    is_sent = bitRead(sys_status, 7);
-    SPIevent = false;
-  }
-  switch(my_status){
-    case INIT:
-      my_status = RANGE1;
-      Serial.print("ITER: ");
-      Serial.println(iter);
-      range1_time = 0;
-      reply1_time = 0;
-      delay(100);
-    case RANGE1:
-      Serial.println("RANGE1");
-      newsent();
-      sentRange1();
-      // waiting for sent
-      while(!issent()){
-      }
-      // record range1_time
-      range1_time = getTimestamp(TX_TIME_ID);
-      clearSent();
-      my_status = LISTEN1;
-      now_time = micros();
-      //newreceive();
-      dw.startRx();
-    case LISTEN1:
-      //timeout, goto post_range
-      if(isreceive()){
-        clearReceive();
-        reply1_time = getTimestamp(RX_TIME_ID);
-       // Serial.print("Reply1_time to range1_time is: ");
-        delta_time = reply1_time - range1_time;
-        delta_time = delta_time*50/3/100-20000000;
-        delta_time = delta_time-1310000;
-        push_buffer(range_buffer, (uint32_t)delta_time);
-        Serial.print("delta time is: ");
-        Serial.println(avg_buffer(range_buffer));
-        
-        //Serial.println((uint32_t)delta_time);
-        //Serial.print((uint32_t)(delta_time>1310600? 100+(delta_time-1310600)*3:100), DEC);
-        //Serial.print(" cm");
-        //Serial.print("   System elapse: ");
-        //Serial.println(micros()-now_time);
-        now_time = micros();
-        my_status = RANGE1;
 
 
-/*
-        Serial.print((uint8_t)(0xFF&(range1_time>>32)));
-        Serial.print((uint32_t)(0xFFFFFFFF&range1_time));
-        Serial.print("   ");
-        Serial.print((uint8_t)(0xFF&(reply1_time>>32)));
-        Serial.print((uint32_t)(0xFFFFFFFF&reply1_time));
-        Serial.println("");
-*/
-        
-      }
-      break;
-    case POST_RANGE:
-      Serial.println("Received reply!");
-      Serial.print("Cost time is: ");
-      //Serial.println(reply1_time-range1_time-31949);
-      now_time = micros();
-      my_status = INIT;
-      delay(1000);
-      break;
-    default:
-      break;
-  }
+inline void DW1000_reset(void)
+{
+	my_status = RANGE1;
+	//Serial.print("ITER: ");
+	//Serial.println(iter);
+	range1_time = 0;
+	reply1_time = 0;
+	delay(100);
+} // DW1000_init()
 
-  if (micros()-now_time>1000000){
-    //softReset();
-    my_status = RANGE1;
-  }
+
+
+inline void DW1000_send(void)
+{
+	//Serial.println("RANGE1");
+	newsent();
+	sentRange1();
+	while(!issent())
+		;
+	// record range1_time
+	range1_time = getTimestamp(TX_TIME_ID);
+	clearSent();
+	my_status = LISTEN1;
+} // DW10000_send()
+
+
+
+inline void DW1000_receive(void)
+{
+	timeout = 0;
+	dw.startRx();
+
+	// Check for timeout
+	now_time = micros();
+	while(!isreceive())
+	{
+		if (micros()-now_time>1000000)
+		{
+			timeout = 1;
+			DW1000_reset(); // reset and restart on timeout
+			return;
+		}
+	}
+
+	clearReceive();
+	reply1_time = getTimestamp(RX_TIME_ID);
+	delta_time = reply1_time - range1_time;
+	delta_time = delta_time*50/3/100-20000000;
+	delta_time = delta_time-1310000;
+	push_buffer(range_buffer, (uint32_t)delta_time);
+	Serial.print("delta time is: ");
+	Serial.println(avg_buffer(range_buffer));
+} // DW1000_receive()
+
+
+
+inline void post_range(void)
+{
+	//Serial.println("Received reply!");
+	//Serial.print("Cost time is: ");
+	//Serial.println(reply1_time-range1_time-31949);
+	now_time = micros();
+	my_status = INIT;
+	delay(1000);
 }
+
+
+
+
+void loop()
+{
+	DW1000_reset();
+	DW1000_send();
+	DW1000_receive();
+
+	if(!timeout)
+		post_range();
+} // loop()

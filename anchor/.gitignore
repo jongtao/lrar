@@ -1,0 +1,4 @@
+# Ignore libraries
+digitalWriteFast.h
+DW1000.cpp
+DW1000.h

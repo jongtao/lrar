@@ -184,12 +184,16 @@ inline void DW1000_receive(void)
 	reply1_time = getTimestamp(RX_TIME_ID);
 	delta_time = reply1_time - range1_time;
 	delta_time = (delta_time-65000000)*50/3/100;
-	delta_time = delta_time-11000;
+	delta_time = delta_time-10000;
 	push_buffer(range_buffer, (uint32_t)delta_time);
+
+	/*	
 	Serial.print("Tag: ");
 	Serial.println(tag_numbers[tag]);
 	Serial.print("delta time is: ");
 	Serial.println(avg_buffer(range_buffer));
+	*/
+	
 } // DW1000_receive()
 
 
@@ -199,6 +203,14 @@ inline void post_range(void)
 	//Serial.println("Received reply!");
 	//Serial.print("Cost time is: ");
 	//Serial.println(reply1_time-range1_time-31949);
+	
+	
+	Serial.print("H");
+	Serial.print(tag_numbers[tag]); // should only print a digit. remember to fix 
+	Serial.print((uint32_t)delta_time);
+	Serial.println("T");
+	
+
 	now_time = micros();
 	my_status = INIT;
 	delay(DELAY_MS);
@@ -213,11 +225,12 @@ void loop()
 	DW1000_send(tag_numbers[tag]);
 	DW1000_receive();
 
+	if(!timeout)
+		post_range();
+
 	tag++;
 	if(tag >= NUM_TAGS)
 		tag = 0;
 
-	if(!timeout)
-		post_range();
 } // loop()
 
